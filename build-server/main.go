@@ -85,7 +85,7 @@ func main() {
 	}
 
 	fmt.Println("Build Started...")
-	repoLink := "https://github.com/mohit-nagaraj/qr-generator"
+	repoLink := "https://github.com/romansndlr/react-vite-realworld-example-app.git"
 
 	if err := runCommand(ctx, fmt.Sprintf("git clone %s ./output", repoLink)); err != nil {
 		log.Fatalf("Failed to clone repository: %v", err)
@@ -94,13 +94,8 @@ func main() {
 	fmt.Println("Repository cloned.")
 
 	outDirPath := filepath.Join(".", "output")
-	if err := runCommand(ctx, fmt.Sprintf("cd %s", outDirPath)); err != nil {
+	if err := runCommand(ctx, fmt.Sprintf("cd %s && npm install && npm run build", outDirPath)); err != nil {
 		log.Fatalf("Build failed: %v", err)
-		return
-	}
-
-	if err := runCommand(ctx, "npm install && npm run build"); err != nil {
-		log.Fatalf("Build 2 failed: %v", err)
 		return
 	}
 
