@@ -21,10 +21,15 @@ RUN go build -o main .
 # Use the official Node.js image to install Node.js dependencies
 FROM node:14
 
-RUN apt-get install git -y
+RUN apt-get update && apt-get install git -y
 
 WORKDIR /home/app
 
+# Copy the built Go binary from the builder stage
 COPY --from=builder /home/app/main .
 
+# Ensure the binary has execute permissions
+RUN chmod +x ./main
+
+# Command to run the executable
 CMD ["./main"]
