@@ -1,5 +1,5 @@
 # Use the official Golang image to create a build artifact.
-FROM golang:1.21 as builder
+FROM golang:1.23.4 as builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /home/app
@@ -19,7 +19,7 @@ RUN go build -o main .
 # MULTI STAGE BUILDS
 
 # Use the official Node.js image to install Node.js dependencies
-FROM node:14
+FROM node:22
 
 RUN apt-get update && apt-get install git -y
 
