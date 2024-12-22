@@ -19,7 +19,7 @@ import (
 )
 
 // runCommand executes a shell command and captures its output.
-func runCommand(ctx context.Context, cmd string) error {
+func runCommand(cmd string) error {
 	fmt.Printf("Executing: %s\n", cmd)
 
 	command := exec.Command("sh", "-c", cmd)
@@ -105,6 +105,7 @@ func main() {
 	}
 
 	projectID := flag.String("pid", "", "Project ID to use for S3 key")
+	repoLink := flag.String("repo", "", "Repository link")
 	bucket := "solace-outputs"
 	flag.Parse()
 
@@ -112,16 +113,19 @@ func main() {
 		log.Fatalf("Project ID is required. Use the --pid flag to specify it.")
 	}
 
-	fmt.Println("Build Started...")
-	repoLink := "https://github.com/romansndlr/react-vite-realworld-example-app.git"
+	if *repoLink == "" {
+		log.Fatalf("Repository link is required. Use the --repo flag to specify it.")
+	}
 
-	if err := runCommand(context.Background(), fmt.Sprintf("git clone %s ./output", repoLink)); err != nil {
+	fmt.Println("Build Started...")
+
+	if err := runCommand(fmt.Sprintf("git clone %s ./output", *repoLink)); err != nil {
 		log.Fatalf("Failed to clone repository: %v", err)
 	}
 	fmt.Println("Repository cloned.")
 
 	outDirPath := filepath.Join(".", "output")
-	if err := runCommand(context.Background(), fmt.Sprintf("cd %s && npm install && npm run build", outDirPath)); err != nil {
+	if err := runCommand(fmt.Sprintf("cd %s && npm install && npm run build", outDirPath)); err != nil {
 		log.Fatalf("Failed to build the project: %v", err)
 	}
 
