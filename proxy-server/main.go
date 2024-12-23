@@ -2,61 +2,63 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
-
-	"github.com/gin-gonic/gin"
 )
 
 const (
-	PORT      = "8000"                                                               // Port number where the server will run
-	BASE_PATH = "https://vercel-clone-outputs.s3.ap-south-1.amazonaws.com/__outputs" // Base URL path for resolving subdomains
+	PORT       = ":8000"
+	TARGET_URL = "https://solace-outputs.s3.ap-south-1.amazonaws.com"
 )
 
+func NewReverseProxy() (*httputil.ReverseProxy, error) {
+	targetURL, err := url.Parse(TARGET_URL)
+	if err != nil {
+		return nil, err
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+	originalDirector := proxy.Director
+
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+
+		// Get subdomain from the host
+		subdomain := strings.Split(req.Host, ".")[0]
+
+		// Keep the original path after the subdomain
+		originalPath := req.URL.Path
+		if originalPath == "/" {
+			originalPath = "/index.html"
+		}
+
+		// Set the path using the subdomain
+		req.URL.Path = "/__outputs/" + subdomain + originalPath
+
+		// Set the host header to match the target
+		req.Host = targetURL.Host
+	}
+
+	return proxy, nil
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	proxy, err := NewReverseProxy()
+	if err != nil {
+		log.Printf("Error creating reverse proxy: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	proxy.ServeHTTP(w, r)
+}
+
 func main() {
-	r := gin.Default()                  // Create a Gin router with default middleware: logger and recovery
-	r.Any("/*proxyPath", handleRequest) // Route all requests to handleRequest function
-
-	log.Printf("Reverse Proxy Running on port %s..", PORT) // Log message
-	log.Fatal(r.Run(":" + PORT))                           // Run the server on the specified port
-}
-
-func handleRequest(c *gin.Context) {
-	hostname := c.Request.Host                   // Extract the hostname from the incoming request
-	subdomain := strings.Split(hostname, ".")[0] // Get the subdomain (e.g., if hostname is "sub.example.com", subdomain will be "sub")
-
-	// Custom Domain - DB Query
-	// Example: Assume the hostname is "myapp.example.com"
-	// Subdomain extracted: "myapp"
-
-	resolvesTo := BASE_PATH + "/" + subdomain // Construct the URL to which the request should be proxied
-	// Example: resolvesTo = "https://vercel-clone-outputs.s3.ap-south-1.amazonaws.com/__outputs/myapp"
-
-	proxyURL, _ := url.Parse(resolvesTo) // Parse the target URL
-
-	proxy := httputil.NewSingleHostReverseProxy(proxyURL) // Create a reverse proxy pointing to the target URL
-
-	// Adjust the URL path for the proxy request
-	c.Request.URL.Path = singleJoiningSlash(proxyURL.Path, c.Request.URL.Path)
-	// Example: If incoming request URL is "/", it will be changed to "/index.html"
-
-	if c.Request.URL.Path == "/" {
-		c.Request.URL.Path = "/index.html"
+	http.HandleFunc("/", handler)
+	log.Printf("Reverse Proxy Running on port %s", PORT)
+	if err := http.ListenAndServe(PORT, nil); err != nil {
+		log.Fatalf("Error starting server: %v", err)
 	}
-
-	proxy.ServeHTTP(c.Writer, c.Request) // Forward the request to the target URL
-}
-
-func singleJoiningSlash(a, b string) string {
-	// Helper function to join URL paths correctly
-	aslash := strings.HasSuffix(a, "/")
-	bslash := strings.HasPrefix(b, "/")
-	switch {
-	case aslash && bslash:
-		return a + b[1:]
-	case !aslash && !bslash:
-		return a + "/" + b
-	}
-	return a + b
 }
