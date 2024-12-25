@@ -5,16 +5,16 @@ import (
 	"flag"
 	"fmt"
 	"log"
-
 	"os"
-
 	"path/filepath"
+
+	"github.com/mohit-nagaraj/solace/build-server/logs"
+	"github.com/mohit-nagaraj/solace/build-server/utils"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/joho/godotenv"
-	"github.com/mohit-nagaraj/solace/build-server/utils"
 )
 
 func main() {
@@ -42,14 +42,17 @@ func main() {
 		log.Fatalf("Repository link is required. Use the --repo flag to specify it.")
 	}
 
-	fmt.Println("Build Started...")
+	logs.PublishLog("logs:"+*projectID, fmt.Sprintf("Build started for project %s", *projectID))
+	logs.PublishLog("logs:"+*projectID, "Cloning repository: "+*repoLink)
 
 	if err := utils.RunCommand(fmt.Sprintf("git clone %s ./output", *repoLink)); err != nil {
 		log.Fatalf("Failed to clone repository: %v", err)
 	}
-	fmt.Println("Repository cloned.")
+
+	logs.PublishLog("logs:"+*projectID, fmt.Sprintf("Repository cloned..."))
 
 	outDirPath := filepath.Join(".", "output")
+	logs.PublishLog("logs:"+*projectID, "cd ./output && npm install && npm run build")
 	if err := utils.RunCommand(fmt.Sprintf("cd %s && npm install && npm run build", outDirPath)); err != nil {
 		log.Fatalf("Failed to build the project: %v", err)
 	}
@@ -68,14 +71,14 @@ func main() {
 		log.Fatalf("Failed to load AWS configuration: %v", err)
 	}
 	client := s3.NewFromConfig(cfg)
-	fmt.Println("S3 client initialized.")
+	logs.PublishLog("logs:"+*projectID, fmt.Sprintf("S3 client initialized."))
 
 	distFolderPath := filepath.Join(outDirPath, "dist")
 	baseKey := fmt.Sprintf("__outputs/%s", *projectID)
 
-	if err := utils.UploadDirectory(context.Background(), client, bucket, baseKey, distFolderPath); err != nil {
+	if err := utils.UploadDirectory(context.Background(), projectID, client, bucket, baseKey, distFolderPath); err != nil {
 		log.Fatalf("Failed to upload files: %v", err)
 	}
 
-	fmt.Println("Build process completed successfully.")
+	logs.PublishLog("logs:"+*projectID, fmt.Sprintf("Build process completed successfully."))
 }

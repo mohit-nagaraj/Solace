@@ -11,11 +11,13 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/mohit-nagaraj/solace/build-server/logs"
 )
 
 // uploadFile uploads a single file to S3.
-func uploadFile(ctx context.Context, client *s3.Client, bucket, key, filePath string) error {
-	fmt.Printf("Uploading %s to S3 as %s...\n", filePath, key)
+func uploadFile(ctx context.Context, projectID *string, client *s3.Client, bucket, key, filePath string) error {
+
+	logs.PublishLog("logs:"+*projectID, fmt.Sprintf("Uploading %s to S3 as %s...\n", filePath, key))
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -39,12 +41,13 @@ func uploadFile(ctx context.Context, client *s3.Client, bucket, key, filePath st
 		log.Printf("Failed to upload file %s: %v\n", filePath, err)
 		return err
 	}
-	fmt.Printf("Successfully uploaded %s\n", filePath)
+
+	logs.PublishLog("logs:"+*projectID, fmt.Sprintf("Successfully uploaded %s\n", filePath))
 	return nil
 }
 
 // uploadDirectory recursively uploads all files in a directory to S3.
-func UploadDirectory(ctx context.Context, client *s3.Client, bucket, baseKey, dirPath string) error {
+func UploadDirectory(ctx context.Context, projectID *string, client *s3.Client, bucket, baseKey, dirPath string) error {
 	return filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("failed to access path %s: %v", path, err)
@@ -63,7 +66,7 @@ func UploadDirectory(ctx context.Context, client *s3.Client, bucket, baseKey, di
 		s3Key := filepath.Join(baseKey, relPath)
 
 		// Upload the file
-		if err := uploadFile(ctx, client, bucket, s3Key, path); err != nil {
+		if err := uploadFile(ctx, projectID, client, bucket, s3Key, path); err != nil {
 			log.Printf("Failed to upload %s; continuing with next file.\n", path)
 		}
 		return nil
