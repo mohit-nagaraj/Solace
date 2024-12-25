@@ -5,19 +5,30 @@ import (
 	"log"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 )
 
 var redisClient *redis.Client
 
 func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	redisAddr := os.Getenv("REDIS_ADDR")
+	redisPass := os.Getenv("REDIS_PASS")
 	if redisAddr == "" {
 		redisAddr = "localhost:6379"
 	}
+	if redisPass == "" {
+		redisPass = ""
+	}
 
 	redisClient = redis.NewClient(&redis.Options{
-		Addr: redisAddr,
+		Addr:     redisAddr,
+		Password: redisPass,
+		DB:       0,
 	})
 
 	_, err := redisClient.Ping(context.Background()).Result()
