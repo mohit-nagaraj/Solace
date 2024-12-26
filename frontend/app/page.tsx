@@ -36,25 +36,26 @@ export default function Home() {
   const handleClickDeploy = useCallback(async () => {
     setLoading(true);
 
-    const { data } = await axios.post(`http://localhost:9000/project`, {
-      gitURL: repoURL,
-      slug: projectId,
-    });
+    const { data } = await axios.post(
+      `http://localhost:9000/run-job-override`,
+      {
+        repo_link: repoURL,
+        pid: projectId,
+      }
+    );
 
-    if (data && data.data) {
-      const { projectSlug, url } = data.data;
-      setProjectId(projectSlug);
-      setDeployPreviewURL(url);
+    if (data) {
+      setDeployPreviewURL(`http://${projectId}.localhost:8000/`);
 
-      console.log(`Subscribing to logs:${projectSlug}`);
-      socket.emit("subscribe", `logs:${projectSlug}`);
+      console.log(`Subscribing to logs:${projectId}`);
+      socket.emit("subscribe", `logs:${projectId}`);
     }
   }, [projectId, repoURL]);
 
   const handleSocketIncommingMessage = useCallback((message: string) => {
     console.log(`[Incomming Socket Message]:`, typeof message, message);
-    const { log } = JSON.parse(message);
-    setLogs((prev) => [...prev, log]);
+
+    setLogs((prev) => [...prev, message]);
     logContainerRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
@@ -77,6 +78,15 @@ export default function Home() {
             onChange={(e) => setURL(e.target.value)}
             type="url"
             placeholder="Github URL"
+          />
+        </span>
+        <span className="flex justify-start items-center gap-2 mt-2">
+          <Input
+            disabled={loading}
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            type="text"
+            placeholder="Project ID"
           />
         </span>
         <Button

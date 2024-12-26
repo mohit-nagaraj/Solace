@@ -7,6 +7,7 @@ import (
 
 	run "cloud.google.com/go/run/apiv2"
 	"cloud.google.com/go/run/apiv2/runpb"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/api/option"
 )
@@ -32,6 +33,8 @@ func main() {
 	}
 
 	r := gin.Default()
+
+	r.Use(cors.Default())
 
 	r.POST("/run-job-override", handleRunJobOverride(config))
 
